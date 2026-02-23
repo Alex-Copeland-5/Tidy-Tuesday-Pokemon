@@ -21,15 +21,13 @@ This week we are exploring Pokemon! This dataset is sourced from {pokemon} (CRAN
 ```{r}
 
 # Making new df
-pokemon_df <- data.frame(
-  pokemon <- pokemon_df_old[,"pokemon"],
-  hp <- pokemon_df_old[,"hp"],
-  attack <- pokemon_df_old[,"attack"],
-  defense <- pokemon_df_old[,"defense"],
-  special_attack <- pokemon_df_old[,"special_attack"],
-  special_defense <- pokemon_df_old[,"special_defense"],
-  speed <- pokemon_df_old[,"speed"]
-  )
+pokemon_df <- pokemon_df_old[, (c("pokemon", "hp", "attack", "defense", "special_attack", "special_defense", "speed"))]
+```
+
+```{R}
+#Setting Seed for simulation
+set.seed(1)
+
 ```
 
 
@@ -37,23 +35,28 @@ pokemon_df <- data.frame(
 ```{R}
 #Define Score to be all of the pokemons' stats summed.
 
-pokemon_df$score <- pokemon_df_old$hp + pokemon_df_old$attack + pokemon_df_old$defense + pokemon_df_old$special_attack +pokemon_df_old$special_defense + pokemon_df_old$speed
+pokemon_df$score <- pokemon_df_old$hp + 
+                    pokemon_df_old$attack + 
+                    pokemon_df_old$defense + 
+                    pokemon_df_old$special_attack + 
+                    pokemon_df_old$special_defense + 
+                    pokemon_df_old$speed
 ```
 
 
 
 ```{r}
-fight_sim <- function(pokemon1, pokemon2, sigma) {
+fight_sim <- function(pokemon1, pokemon2, sigma, iterations = 10) {
 
   wins_pokemon1 <- 0
   wins_pokemon2 <- 0
   ties <- 0
 
-    for (k in 1:10) {
+    for (k in 1:iterations) {
       
       # Defining a random number +- of sigma to be luck factor.
-      epsilon_a <- rnorm(1, 0, sigma)
-      epsilon_b <- rnorm(1, 0, sigma)
+      epsilon_a <- runif(1, -sigma, sigma)
+      epsilon_b <- runif(1, -sigma, sigma)
   
       # Updating new score
       score_pokemon1 <- pokemon1$score + epsilon_a
@@ -71,16 +74,16 @@ fight_sim <- function(pokemon1, pokemon2, sigma) {
         }
     }
   
-  #sprintf("blah %s blah blah %d, %s = string, %d = int)
-  print(sprintf("%s won %d times", pokemon1$pokemon[1], wins_pokemon1))
-  print(sprintf("%s won %d times", pokemon2$pokemon[1], wins_pokemon2))
-  print(sprintf("tied %d times", ties))
+    win_loss_pokemon <- data.frame(
+      pokemon1 = pokemon1$pokemon[1],
+      pokemon2 = pokemon2$pokemon[1],
+      wins_pokemon1 = wins_pokemon1,
+      wins_pokemon2 = wins_pokemon2,
+      ties = ties
+    )
+    return(win_loss_pokemon)
 }
 
-# This confused me,
-# pokemon_df[pokemon_df$pokemon == "venusaur",]
-# says to go in df, get the all the rows where the pokemon is venasur.
-fight_sim(pokemon_df[pokemon_df$pokemon == "venusaur",], pokemon_df[pokemon_df$pokemon == "charizard",], sigma = 50)
 ```
 
 
@@ -89,17 +92,49 @@ fight_sim(pokemon_df[pokemon_df$pokemon == "venusaur",], pokemon_df[pokemon_df$p
 #Define noise for simulation
 
 # We define sigma, to control amount of luck in simulation.
-sigma <- 200
+sigma <- 50
 
-  for (i in 1:5){
-  if (i == 5){
+# Define total iterations and counter for pb
+total_iterations <- choose(nrow(pokemon_df),2)
+counter <- 0
+
+# Define progress bar
+pb <- txtProgressBar(min = 0, max = total_iterations, style = 3)
+
+# Define an emtpy df to rbind with in loop.
+total_win_loss_pokemon <- data.frame()
+  for (i in 1:nrow(pokemon_df)){
+  if (i == nrow(pokemon_df)){
     break
     }
-  for (j in (i + 1):5){
-      fight_sim(pokemon[i,], pokemon[j,], sigma)
+  for (j in (i + 1):nrow(pokemon_df)){
+      # Start time
+      start <- Sys.time()
+      # Save fight sim in a var, so the returned result in fn can be rbind with.
+      pokemon_fight <- fight_sim(pokemon_df[i,], pokemon_df[j,], sigma)
+      # rbind with itself and the results of the sim.
+      total_win_loss_pokemon <- rbind(total_win_loss_pokemon, pokemon_fight)
+      
+      # Progress Bar
+      counter <- counter + 1
+      setTxtProgressBar(pb, counter)
       }
   }
+```
 
-# I think this is breaking because I am trying to pass in a column, instead of a pokemon.
+```{R}
+
+# Output csv
+write.csv(total_win_loss_pokemon,
+          file = "pokemon_tournament_results.csv",
+          row.names = FALSE)
 
 ```
+
+
+
+
+
+
+
+
